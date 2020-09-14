@@ -1,4 +1,6 @@
-let expect = require('chai').expect,
+let fs = require('fs'),
+  _ = require('lodash'),
+  expect = require('chai').expect,
   getOptions = require('../../index').getOptions;
 
 const optionIds = [
@@ -140,6 +142,29 @@ const optionIds = [
     }
   };
 
+/**
+ * Generates markdown table documentation of options from getOptions()
+ *
+ * @param {Object} options - options from getOptions()
+ * @returns {String} - markdown table consisting documetation for options
+ */
+function generateOptionsDoc (options) {
+  var doc = 'id|type|available options|description|usage\n|---|---|---|---|---|\n';
+
+  _.forEach(options, (option) => {
+    var convertArrayToDoc = (array, useFirstElementDefault = false) => {
+        return _.reduce(array, (acc, ele, key) => {
+          return (_.isEmpty(acc) ? acc : acc + ', ') + (useFirstElementDefault && !key ? `**${ele}**` : ele);
+        }, '') || '-';
+      },
+      availableOptions = option.type === 'enum' ? _.uniq(_.concat([option.default], option.availableOptions)) : [];
+
+    doc += `${option.id}|${option.type}|${convertArrayToDoc(availableOptions, true)}|` +
+      `${option.description}|${convertArrayToDoc(option.usage)}\n`;
+  });
+  return doc;
+}
+
 describe('getOptions', function() {
   let options = getOptions();
 
@@ -187,3 +212,9 @@ describe('getOptions', function() {
   });
 });
 
+describe('OPTIONS.md', function() {
+  it('must contain all details of options', function () {
+    const optionsDoc = fs.readFileSync('OPTIONS.md', 'utf-8');
+    expect(optionsDoc).to.eql(generateOptionsDoc(getOptions()));
+  });
+});
